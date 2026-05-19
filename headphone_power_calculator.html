@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Headphone Power Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    h1 { text-align: center; font-size: 1.7rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.3rem; }
+    .subtitle { text-align: center; font-size: 0.85rem; color: #64748b; margin-bottom: 2rem; }
+
+    .container { max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .card { background: #1e2330; border: 1px solid #2d3548; border-radius: 14px; padding: 1.5rem; }
+    .card h2 { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #7c8db5; margin-bottom: 1.1rem; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    @media (max-width: 500px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    label { display: block; font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.4rem; font-weight: 500; }
+
+    input[type="number"], input[type="text"] {
+      width: 100%; background: #131720; border: 1px solid #2d3548; border-radius: 8px;
+      color: #e2e8f0; padding: 0.55rem 0.75rem; font-size: 0.92rem; outline: none; transition: border-color 0.2s;
+    }
+    input:focus { border-color: #4f7cff; }
+
+    .hint { font-size: 0.73rem; color: #4a5568; margin-top: 0.4rem; line-height: 1.5; }
+
+    /* Sensitivity mode tabs */
+    .mode-tabs {
+      display: flex; background: #131720; border: 1px solid #2d3548;
+      border-radius: 9px; padding: 3px; margin-bottom: 1rem; gap: 3px;
+    }
+    .mode-tab {
+      flex: 1; padding: 0.45rem 0.4rem; border-radius: 7px; border: none;
+      background: transparent; color: #64748b; font-size: 0.74rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; text-align: center; line-height: 1.4;
+    }
+    .mode-tab.active { background: #1e2d55; color: #7aa0f7; }
+    @media (max-width: 420px) {
+      .mode-tab { font-size: 0.65rem; padding: 0.45rem 0.25rem; }
+      .mode-tab span { font-size: 0.9em; }
+    }
+
+    .sens-panel { display: none; }
+    .sens-panel.active { display: block; }
+
+    .boost-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; align-items: center; }
+    .boost-pill {
+      background: #131720; border: 1px solid #2d3548; border-radius: 20px;
+      padding: 0.3rem 0.75rem; font-size: 0.78rem; color: #94a3b8;
+      cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .boost-pill:hover { border-color: #4f7cff; color: #7aa0f7; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3a5bd9, #5b7ff5); border: none; color: #fff;
+      border-radius: 10px; padding: 0.75rem 2rem; font-size: 1rem;
+      cursor: pointer; font-weight: 700; width: 100%; transition: opacity 0.2s;
+    }
+    .btn-primary:hover { opacity: 0.88; }
+
+    .btn-secondary {
+      background: #131720; border: 1px solid #2d3548; color: #94a3b8;
+      border-radius: 10px; padding: 0.75rem 1.4rem; font-size: 0.95rem;
+      cursor: pointer; font-weight: 600; transition: all 0.15s;
+    }
+    .btn-secondary:hover { background: #1a2030; color: #cbd5e1; border-color: #475569; }
+
+    .results-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; margin-bottom: 1rem; }
+    @media (max-width: 500px) { .results-grid { grid-template-columns: 1fr 1fr; } }
+
+    .result-box { background: #131720; border: 1px solid #2d3548; border-radius: 10px; padding: 0.9rem 0.7rem; text-align: center; }
+    .result-box .val { font-size: 1.3rem; font-weight: 800; color: #7aa0f7; line-height: 1.1; }
+    .result-box .rlabel { font-size: 0.65rem; color: #64748b; margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* step-through workings */
+    .workings {
+      background: #131720; border-radius: 10px; padding: 1rem 1.1rem;
+      font-size: 0.83rem; line-height: 2; color: #cbd5e1; font-family: 'Courier New', monospace;
+      margin-bottom: 0.8rem; border: 1px solid #2d3548;
+    }
+    .workings .step-label { color: #64748b; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-top: 0.6rem; font-family: 'Segoe UI', sans-serif; }
+    .workings .step-label:first-child { margin-top: 0; }
+    .workings .eq { color: #e2e8f0; display: block; }
+    .workings .eq.indent { padding-left: 1.5rem; color: #64748b; font-size: 0.9em; display: block; }
+    .workings .result { color: #4ade80; font-weight: 700; font-size: 1.05em; }
+    .workings .note { color: #64748b; font-size: 0.75rem; font-family: 'Segoe UI', sans-serif; }
+
+    .verdict-box {
+      background: #131720; border-left: 3px solid #4f7cff; border-radius: 10px;
+      padding: 0.9rem 1rem; font-size: 0.86rem; line-height: 1.7; color: #cbd5e1;
+    }
+
+    .hidden { display: none; }
+    hr { border: none; border-top: 1px solid #2d3548; margin: 1rem 0; }
+
+    details summary { cursor: pointer; font-size: 0.78rem; color: #64748b; margin-top: 0.8rem; user-select: none; }
+    details summary:hover { color: #94a3b8; }
+    .ref-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+    .ref-table th { text-align: left; color: #64748b; font-weight: 600; padding: 0.3rem 0.5rem; border-bottom: 1px solid #2d3548; }
+    .ref-table td { padding: 0.35rem 0.5rem; color: #94a3b8; border-bottom: 1px solid #1a2030; }
+    .ref-table td:last-child { color: #7aa0f7; font-weight: 700; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div>
+    <h1>🎧 Headphone Power Calculator</h1>
+    <p class="subtitle">Calculate power requirements for any headphone with optional EQ boost</p>
+  </div>
+
+  <!-- HEADPHONE NAME (optional) -->
+  <div class="card" style="padding:1rem 1.5rem;">
+    <label style="margin-bottom:0.3rem;">Headphone Name <span style="color:#4a5568;font-weight:400;">(optional)</span></label>
+    <input type="text" id="hpName" placeholder="e.g. Hifiman Ananda Nano" />
+  </div>
+
+  <!-- SENSITIVITY -->
+  <div class="card">
+    <h2>Step 1 — Sensitivity</h2>
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" onclick="setMode('mv94')">
+        Measured<br><span style="font-weight:400;">mV @ 94 dB SPL</span>
+      </button>
+      <button class="mode-tab" onclick="setMode('dbmw')">
+        Brand Spec<br><span style="font-weight:400;">dB / mW</span>
+      </button>
+      <button class="mode-tab" onclick="setMode('dbv')">
+        Brand Spec<br><span style="font-weight:400;">dB / V</span>
+      </button>
+    </div>
+
+    <!-- mV @ 94dB -->
+    <div class="sens-panel active" id="panel-mv94">
+      <label>mV required for 94 dB SPL <span style="color:#4a5568;">(from ASR or other measured source)</span></label>
+      <input type="number" id="sens_mv94" placeholder="e.g. 149" min="1" step="any" />
+      <p class="hint">Most reliable. From AudioScienceReview's sensitivity chart. Lower mV = more sensitive.</p>
+    </div>
+
+    <!-- dB/mW -->
+    <div class="sens-panel" id="panel-dbmw">
+      <label>Sensitivity (dB / mW) <span style="color:#4a5568;">(manufacturer)</span></label>
+      <input type="number" id="sens_dbmw" placeholder="e.g. 94" min="50" step="any" />
+      <p class="hint">e.g. "94 dB/mW". The reference is 1mW — voltage for that 1mW depends on impedance, so always pair with the correct impedance figure below.</p>
+    </div>
+
+    <!-- dB/V -->
+    <div class="sens-panel" id="panel-dbv">
+      <label>Sensitivity (dB / 1V) <span style="color:#4a5568;">(manufacturer)</span></label>
+      <input type="number" id="sens_dbv" placeholder="e.g. 91" min="50" step="any" />
+      <p class="hint">Used by some brands (e.g. Audeze). Fixed 1V reference regardless of impedance.</p>
+    </div>
+  </div>
+
+  <!-- IMPEDANCE -->
+  <div class="card">
+    <h2>Step 2 — Impedance</h2>
+    <div class="grid-2">
+      <div>
+        <label>Impedance for power calculation (Ω)</label>
+        <input type="number" id="impedance" placeholder="e.g. 14" min="1" step="any" />
+        <p class="hint">Use the lowest impedance between the listed spec and the ASR measurement — it gives the higher (safer) power figure.</p>
+      </div>
+      <div>
+        <label>Target SPL (dB)</label>
+        <input type="number" id="targetSPL" placeholder="e.g. 110" min="80" max="130" step="any" />
+        <p class="hint">110 dB SPL is the standard reference for transient headroom calculations.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- EQ -->
+  <div class="card">
+    <h2>Step 3 — EQ Boost</h2>
+    <label>Largest single EQ boost (dB) — enter 0 or leave blank for no EQ</label>
+    <input type="number" id="maxBoost" placeholder="e.g. 4.5" min="0" max="20" step="any" />
+    <p class="hint">Only the single largest positive gain filter matters — it sets the worst-case power multiplier.</p>
+
+    <div class="boost-pills">
+      <span style="font-size:0.72rem;color:#4a5568;">Quick set:</span>
+      <span class="boost-pill" onclick="setBoost(0)">No EQ (×1)</span>
+      <span class="boost-pill" onclick="setBoost(3)">+3 dB (×2)</span>
+      <span class="boost-pill" onclick="setBoost(4.5)">+4.5 dB (×2.82)</span>
+      <span class="boost-pill" onclick="setBoost(6)">+6 dB (×4)</span>
+      <span class="boost-pill" onclick="setBoost(10)">+10 dB (×10)</span>
+    </div>
+
+    <div style="margin-top:1rem;">
+      <label>Preamp / Output cut (dB) <span style="color:#4a5568;font-weight:400;">optional — negative value e.g. −5</span></label>
+      <input type="number" id="preamp" placeholder="e.g. -5" step="any" />
+      <p class="hint">Subtracts from the effective boost. Net boost = max boost + preamp cut. If ≤ 0, no extra power multiplier is applied.</p>
+    </div>
+
+    <details>
+      <summary>▸ dB boost → power multiplier reference  (formula: 10^(dB÷10))</summary>
+      <table class="ref-table">
+        <thead><tr><th>Boost</th><th>Multiplier</th><th>Example: 64 mW base</th></tr></thead>
+        <tbody>
+          <tr><td>+3 dB</td><td>×2.00</td><td>128 mW</td></tr>
+          <tr><td>+4.5 dB</td><td>×2.82</td><td>180 mW</td></tr>
+          <tr><td>+5 dB</td><td>×3.16</td><td>202 mW</td></tr>
+          <tr><td>+6 dB</td><td>×4.00</td><td>256 mW</td></tr>
+          <tr><td>+7 dB</td><td>×5.01</td><td>321 mW</td></tr>
+          <tr><td>+10 dB</td><td>×10.0</td><td>640 mW</td></tr>
+        </tbody>
+      </table>
+    </details>
+  </div>
+
+  <div style="display:flex; gap:0.6rem;">
+    <button class="btn-primary" onclick="calculate()" style="flex:1;">Calculate</button>
+    <button class="btn-secondary" onclick="resetForm()">Reset</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card hidden" id="resultsCard">
+    <h2>Results <span id="hpNameLabel" style="color:#7aa0f7;font-weight:700;text-transform:none;letter-spacing:0;font-size:0.9rem;"></span></h2>
+
+    <div class="results-grid">
+      <div class="result-box">
+        <div class="val" id="r_mw94">—</div>
+        <div class="rlabel">mW @ 94 dB SPL</div>
+      </div>
+      <div class="result-box">
+        <div class="val" id="r_powerratio">—</div>
+        <div class="rlabel">Power Ratio (×)</div>
+      </div>
+      <div class="result-box">
+        <div class="val" id="r_base">—</div>
+        <div class="rlabel">Base Power @ Target SPL</div>
+      </div>
+      <div class="result-box">
+        <div class="val" id="r_eqmult">—</div>
+        <div class="rlabel">EQ Multiplier</div>
+      </div>
+      <div class="result-box">
+        <div class="val" id="r_eq">—</div>
+        <div class="rlabel">Power w/ EQ</div>
+      </div>
+      <div class="result-box">
+        <div class="val" id="r_rec">—</div>
+        <div class="rlabel">Recommended Amp (3× Headroom)</div>
+      </div>
+    </div>
+
+    <!-- Step-through workings -->
+    <div class="workings" id="workings"></div>
+
+    <div class="verdict-box" id="verdict"></div>
+  </div>
+
+  <!-- Method note -->
+  <div class="card">
+    <h2>Calculation Steps</h2>
+    <div style="font-size:0.82rem;color:#94a3b8;line-height:1.8;">
+      <strong style="color:#e2e8f0;">1. Get mW at sensitivity SPL</strong><br>
+      Convert sensitivity to a power value at the reference SPL. For measured mV @ 94 dB SPL: P = V² ÷ R. For dB/mW: 1 mW by definition. For dB/V: P = 1 ÷ R.<br><br>
+      <strong style="color:#e2e8f0;">2. Scale to target SPL (power ratio)</strong><br>
+      Power ratio = 10^((targetSPL − sensitivitySPL) ÷ 10)<br>
+      Base power at target SPL = baseline mW × power ratio<br><br>
+      <strong style="color:#e2e8f0;">3. Apply EQ multiplier</strong><br>
+      EQ multiplier = 10^(boost_dB ÷ 10)<br>
+      Final power = base power × EQ multiplier<br><br>
+      <strong style="color:#e2e8f0;">Why measured sensitivity is preferred</strong><br>
+      Manufacturer dB/mW figures often overstate efficiency. A measured mV value from an independent source (e.g. ASR) reflects the headphone's actual voltage requirement to reach 94 dB SPL, leading to a more realistic power figure.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let currentMode = 'mv94';
+
+  function setMode(mode) {
+    currentMode = mode;
+    ['mv94','dbmw','dbv'].forEach((m, i) => {
+      document.querySelectorAll('.mode-tab')[i].classList.toggle('active', m === mode);
+    });
+    document.querySelectorAll('.sens-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('panel-' + mode).classList.add('active');
+  }
+
+  function setBoost(val) { document.getElementById('maxBoost').value = val; }
+
+  function resetForm() {
+    ['sens_mv94','sens_dbmw','sens_dbv','impedance','targetSPL','maxBoost','preamp','hpName'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('resultsCard').classList.add('hidden');
+    setMode('mv94');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function getSensBaseAndMv(imp) {
+    if (currentMode === 'mv94') {
+      const mv = parseFloat(document.getElementById('sens_mv94').value);
+      if (isNaN(mv) || isNaN(imp)) return null;
+      const mw = (mv/1000) * (mv/1000) / imp * 1000;
+      return { mw94: mw, mv94: mv, sensSPL: 94 };
+    }
+    if (currentMode === 'dbmw') {
+      const dbmw = parseFloat(document.getElementById('sens_dbmw').value);
+      if (isNaN(dbmw)) return null;
+      const mv = Math.sqrt(0.001 * imp) * 1000;
+      return { mw94: 1.0, mv94: mv, sensSPL: dbmw };
+    }
+    if (currentMode === 'dbv') {
+      const dbv = parseFloat(document.getElementById('sens_dbv').value);
+      if (isNaN(dbv) || isNaN(imp)) return null;
+      const mw1v = (1 * 1) / imp * 1000;
+      return { mw94: mw1v, mv94: 1000, sensSPL: dbv };
+    }
+    return null;
+  }
+
+  function calculate() {
+    const imp    = parseFloat(document.getElementById('impedance').value);
+    const target = parseFloat(document.getElementById('targetSPL').value);
+    const boost  = parseFloat(document.getElementById('maxBoost').value) || 0;
+    const preamp = parseFloat(document.getElementById('preamp').value) || 0;
+    const name   = document.getElementById('hpName').value.trim();
+
+    if (isNaN(imp) || isNaN(target)) {
+      alert('Please fill in impedance and target SPL.'); return;
+    }
+
+    const sens = getSensBaseAndMv(imp);
+    if (!sens) { alert('Please fill in sensitivity.'); return; }
+
+    const { mw94, mv94, sensSPL } = sens;
+
+    // Step 1: power ratio from sensSPL to target
+    const dbDiff    = target - sensSPL;
+    const powerRatio = Math.pow(10, dbDiff / 10);
+
+    // Step 2: base power at target SPL
+    const baseMw = mw94 * powerRatio;
+
+    // Step 3: EQ multiplier
+    const netBoost   = Math.max(0, boost + preamp);
+    const eqMult     = netBoost > 0 ? Math.pow(10, netBoost / 10) : 1;
+    const eqMw       = baseMw * eqMult;
+    const recMw      = eqMw * 3;
+
+    // Voltage and current at final power
+    const voltV   = Math.sqrt((eqMw / 1000) * imp);
+    const currentA = voltV / imp;
+
+    // Populate boxes
+    document.getElementById('r_mw94').textContent      = mw94.toFixed(3) + ' mW';
+    document.getElementById('r_powerratio').textContent = '×' + powerRatio.toFixed(2);
+    document.getElementById('r_base').textContent       = fmtMw(baseMw);
+    document.getElementById('r_eqmult').textContent     = netBoost > 0 ? '×' + eqMult.toFixed(2) : '×1';
+    document.getElementById('r_eq').textContent         = fmtMw(eqMw);
+    document.getElementById('r_rec').textContent        = fmtMw(recMw);
+    document.getElementById('hpNameLabel').textContent  = name ? '— ' + name : '';
+
+    // Step-through workings
+    let w = '';
+    w += `<span class="step-label">Step 1 — mW at sensitivity SPL</span>`;
+    if (currentMode === 'mv94') {
+      w += `<span class="eq">P = (${mv94}mV)² ÷ ${imp}Ω = (${(mv94/1000).toFixed(3)}V)² ÷ ${imp} = <span class="result">${mw94.toFixed(3)} mW</span> @ ${sensSPL} dB SPL</span>`;
+    } else if (currentMode === 'dbmw') {
+      w += `<span class="eq">By definition: 1 mW → ${sensSPL} dB SPL → baseline = <span class="result">1.000 mW</span></span>`;
+    } else if (currentMode === 'dbv') {
+      w += `<span class="eq">1V into ${imp}Ω → P = 1² ÷ ${imp} × 1000 = <span class="result">${mw94.toFixed(3)} mW</span> @ ${sensSPL} dB SPL</span>`;
+    }
+
+    w += `<span class="step-label">Step 2 — Scale to ${target} dB SPL (power ratio)</span>`;
+    w += `<span class="eq">dB difference = ${target} − ${sensSPL} = ${dbDiff} dB</span>`;
+    w += `<span class="eq">Power ratio = 10^(${dbDiff}/10) = 10^${(dbDiff/10).toFixed(2)}</span>`;
+    w += `<span class="eq indent"><span class="result">× ${powerRatio.toFixed(2)}</span></span>`;
+    w += `<span class="eq">Base power = ${mw94.toFixed(3)} mW × ${powerRatio.toFixed(2)}</span>`;
+    w += `<span class="eq indent"><span class="result">${fmtMw(baseMw)}</span></span>`;
+
+    if (netBoost > 0) {
+      w += `<span class="step-label">Step 3 — EQ multiplier (+${boost} dB boost${preamp < 0 ? `, ${preamp} dB preamp → net ${netBoost.toFixed(1)} dB` : ''})</span>`;
+      w += `<span class="eq">EQ multiplier = 10^(${netBoost}/10)</span>`;
+      w += `<span class="eq indent"><span class="result">× ${eqMult.toFixed(2)}</span></span>`;
+      w += `<span class="eq">Power w/ EQ = ${fmtMw(baseMw)} × ${eqMult.toFixed(2)}</span>`;
+      w += `<span class="eq indent"><span class="result">${fmtMw(eqMw)}</span></span>`;
+    } else {
+      w += `<span class="step-label">Step 3 — No EQ boost</span>`;
+      w += `<span class="eq">Multiplier = ×1</span>`;
+      w += `<span class="eq indent"><span class="result">${fmtMw(eqMw)}</span></span>`;
+    }
+
+    w += `<span class="step-label">Voltage &amp; current at required power</span>`;
+    w += `<span class="eq">V = √(${fmtMw(eqMw)} × ${imp}Ω)</span>`;
+    w += `<span class="eq indent"><span class="result">${(voltV*1000).toFixed(0)} mV  (${voltV.toFixed(3)} V)</span></span>`;
+    w += `<span class="eq">I = V ÷ R = ${voltV.toFixed(3)} ÷ ${imp}</span>`;
+    w += `<span class="eq indent"><span class="result">${(currentA*1000).toFixed(1)} mA</span></span>`;
+
+    document.getElementById('workings').innerHTML = w;
+
+    // Verdict
+    let v = `Minimum power to reach <strong>${target} dB SPL</strong>${netBoost > 0 ? ` with +${netBoost.toFixed(1)} dB net EQ boost` : ''}: <strong>${fmtMw(eqMw)}</strong> into ${imp} Ω. `;
+    v += `This requires <strong>${(voltV*1000).toFixed(0)} mV / ${voltV.toFixed(3)} V</strong> and <strong>${(currentA*1000).toFixed(1)} mA</strong>. `;
+    v += `For safe transient headroom (3× rule), target an amp rated at <strong>${fmtMw(recMw)}</strong> or more into ${imp} Ω.`;
+
+    document.getElementById('verdict').innerHTML = v;
+    document.getElementById('resultsCard').classList.remove('hidden');
+    document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function fmtMw(mw) {
+    if (mw >= 1000) return (mw / 1000).toFixed(2) + ' W';
+    if (mw >= 100)  return Math.round(mw) + ' mW';
+    return mw.toFixed(2) + ' mW';
+  }
+</script>
+</body>
+</html>
