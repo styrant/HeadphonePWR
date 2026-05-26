@@ -198,12 +198,6 @@
       <span class="boost-pill" onclick="setBoost(10)">+10 dB (×10)</span>
     </div>
 
-    <div style="margin-top:1rem;">
-      <label>Preamp / Output cut (dB) <span style="color:#4a5568;font-weight:400;">optional — negative value e.g. −5</span></label>
-      <input type="number" id="preamp" placeholder="e.g. -5" step="any" />
-      <p class="hint">Subtracts from the effective boost. Net boost = max boost + preamp cut. If ≤ 0, no extra power multiplier is applied.</p>
-    </div>
-
     <details>
       <summary>▸ dB boost → power multiplier reference  (formula: 10^(dB÷10))</summary>
       <table class="ref-table">
@@ -296,7 +290,7 @@
   function setBoost(val) { document.getElementById('maxBoost').value = val; }
 
   function resetForm() {
-    ['sens_mv94','sens_dbmw','sens_dbv','impedance','targetSPL','maxBoost','preamp','hpName'].forEach(id => {
+    ['sens_mv94','sens_dbmw','sens_dbv','impedance','targetSPL','maxBoost','hpName'].forEach(id => {
       document.getElementById(id).value = '';
     });
     document.getElementById('resultsCard').classList.add('hidden');
@@ -330,7 +324,6 @@
     const imp    = parseFloat(document.getElementById('impedance').value);
     const target = parseFloat(document.getElementById('targetSPL').value);
     const boost  = parseFloat(document.getElementById('maxBoost').value) || 0;
-    const preamp = parseFloat(document.getElementById('preamp').value) || 0;
     const name   = document.getElementById('hpName').value.trim();
 
     if (isNaN(imp) || isNaN(target)) {
@@ -350,8 +343,8 @@
     const baseMw = mw94 * powerRatio;
 
     // Step 3: EQ multiplier
-    const netBoost   = Math.max(0, boost + preamp);
-    const eqMult     = netBoost > 0 ? Math.pow(10, netBoost / 10) : 1;
+    const eqBoost    = Math.max(0, boost);
+    const eqMult     = eqBoost > 0 ? Math.pow(10, eqBoost / 10) : 1;
     const eqMw       = baseMw * eqMult;
     const recMw      = eqMw * 3;
 
@@ -363,7 +356,7 @@
     document.getElementById('r_mw94').textContent      = mw94.toFixed(3) + ' mW';
     document.getElementById('r_powerratio').textContent = '×' + powerRatio.toFixed(2);
     document.getElementById('r_base').textContent       = fmtMw(baseMw);
-    document.getElementById('r_eqmult').textContent     = netBoost > 0 ? '×' + eqMult.toFixed(2) : '×1';
+    document.getElementById('r_eqmult').textContent     = eqBoost > 0 ? '×' + eqMult.toFixed(2) : '×1';
     document.getElementById('r_eq').textContent         = fmtMw(eqMw);
     document.getElementById('r_rec').textContent        = fmtMw(recMw);
     document.getElementById('hpNameLabel').textContent  = name ? '— ' + name : '';
@@ -386,9 +379,9 @@
     w += `<span class="eq">Base power = ${mw94.toFixed(3)} mW × ${powerRatio.toFixed(2)}</span>`;
     w += `<span class="eq indent"><span class="result">${fmtMw(baseMw)}</span></span>`;
 
-    if (netBoost > 0) {
-      w += `<span class="step-label">Step 3 — EQ multiplier (+${boost} dB boost${preamp < 0 ? `, ${preamp} dB preamp → net ${netBoost.toFixed(1)} dB` : ''})</span>`;
-      w += `<span class="eq">EQ multiplier = 10^(${netBoost}/10)</span>`;
+    if (eqBoost > 0) {
+      w += `<span class="step-label">Step 3 — EQ multiplier (+${boost} dB boost)</span>`;
+      w += `<span class="eq">EQ multiplier = 10^(${eqBoost}/10)</span>`;
       w += `<span class="eq indent"><span class="result">× ${eqMult.toFixed(2)}</span></span>`;
       w += `<span class="eq">Power w/ EQ = ${fmtMw(baseMw)} × ${eqMult.toFixed(2)}</span>`;
       w += `<span class="eq indent"><span class="result">${fmtMw(eqMw)}</span></span>`;
@@ -407,7 +400,7 @@
     document.getElementById('workings').innerHTML = w;
 
     // Verdict
-    let v = `Minimum power to reach <strong>${target} dB SPL</strong>${netBoost > 0 ? ` with +${netBoost.toFixed(1)} dB net EQ boost` : ''}: <strong>${fmtMw(eqMw)}</strong> into ${imp} Ω. `;
+    let v = `Minimum power to reach <strong>${target} dB SPL</strong>${eqBoost > 0 ? ` with +${eqBoost.toFixed(1)} dB EQ boost` : ''}: <strong>${fmtMw(eqMw)}</strong> into ${imp} Ω. `;
     v += `This requires <strong>${(voltV*1000).toFixed(0)} mV / ${voltV.toFixed(3)} V</strong> and <strong>${(currentA*1000).toFixed(1)} mA</strong>. `;
     v += `For safe transient headroom (3× rule), target an amp rated at <strong>${fmtMw(recMw)}</strong> or more into ${imp} Ω.`;
 
